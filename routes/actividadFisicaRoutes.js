@@ -2,7 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const actividadFisicaController = require('../controllers/actividadFisicaController.js');
+const authToken = require('../middlewares/authToken.js');
 
-router.get('/', actividadFisicaController.getActividadFisica);
+router.get('/', authToken, actividadFisicaController.getActividadFisica);
 
 module.exports = router;

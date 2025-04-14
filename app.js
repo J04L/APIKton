@@ -13,6 +13,7 @@ app.use(express.json());
 
 // Rutas
 app.use('/usuarios', require('./routes/usuarioRoutes.js'));
+
 app.use('/recetas', require('./routes/recetaRoutes.js'));
 app.use('/actividadFisica', require('./routes/actividadFisicaRoutes.js'));
 app.use('/objetivos', require('./routes/objetivoRoutes.js'));

@@ -1,13 +1,20 @@
 // controllers/usuarioController.js
 const Usuario = require('../models/Usuario.js');
 const Receta = require('../models/Receta.js');
+const argon2 = require('argon2')
 
 // Crear un usuario
 exports.createUsuario = async (req, res) => {
   try {
-    const usuario = new Usuario(req.body);
-    await usuario.save();
-    res.status(201).json(usuario);
+    const {usuarioReq, password} = req.body
+
+    //hasheamos la contraseña
+    usuarioReq.password = await argon2.hash(password)
+    
+    const usuario = new Usuario(usuarioReq);
+    await usuario.save() //insertamos el usuario
+
+    res.status(201).json(usuarioReq);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -16,8 +23,8 @@ exports.createUsuario = async (req, res) => {
 // Obtener usuarios con filtros (todos los campos filtrables) y paginación
 exports.getUsuarios = async (req, res) => {
   try {
-    const { page = 1, limit = 10, ...filters } = req.query;
-    const query = { ...filters };
+    const { usuario, pass } = req.query;
+
     const usuarios = await Usuario.find(query)
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
@@ -32,8 +39,6 @@ exports.getUsuarios = async (req, res) => {
 exports.getUsuarioById = async (req, res) => {
   try {
     const usuario = await Usuario.findById(req.params.id)
-      .populate('objetivo')
-      .populate('actividadFisica');
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
     res.json(usuario);
   } catch (error) {

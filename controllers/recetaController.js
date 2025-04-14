@@ -129,7 +129,7 @@ exports.getRecetas = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
-      console.log(page, limit, recetas)
+      console.log(page, limit)
     res.json(recetas);
   } catch (error) {
     res.status(400).json({ error: error.message });
