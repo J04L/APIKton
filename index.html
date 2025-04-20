@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador PDF con pdfmake</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        pre {
+            background-color: #eee;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            white-space: pre-wrap; /* Permite que el texto se ajuste */
+            word-wrap: break-word; /* Rompe palabras largas */
+        }
+    </style>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.9/pdfmake.min.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.9/vfs_fonts.js'></script>
+</head>
+<body>
+
+<h1>Generar PDF con Tabla Personalizada</h1>
+<p>Haz clic en el botón para generar un PDF de ejemplo con una tabla.</p>
+
+<button id="generarPdfBtn">Generar PDF</button>
+<div id="errorMensaje" class="error"></div>
+
+<h2>Datos de Ejemplo:</h2>
+<pre id="datosEjemplo"></pre>
+
+<h2>Reglas de Coloreado de Ejemplo:</h2>
+<pre id="coloreadoEjemplo"></pre>
+
+<script>
+    /**
+     * Genera un documento PDF con una tabla personalizada usando pdfmake.
+     *
+     * @param {Array<Object>} data - Array de objetos. Cada objeto representa una fila.
+     * Las claves del objeto son los nombres de las columnas.
+     * @param {Array<Object>} [coloredRows=[]] - Array opcional para definir el coloreado.
+     * Cada objeto debe tener:
+     * - rows: Array<number> (índices de las filas a colorear, basado en `data`).
+     * - color: string (color hexadecimal, ej: '#FF0000').
+     * - columns: Array<string> (opcional, nombres de las columnas a colorear en esas filas).
+     * @param {string} [filename='tabla.pdf'] - Nombre del archivo PDF a generar.
+     */
+    function crearTablaPdf(data, coloredRows = [], filename = 'tabla.pdf') {
+        const errorMensajeDiv = document.getElementById('errorMensaje');
+        errorMensajeDiv.textContent = ''; // Limpiar errores previos
+
+        try {
+            // --- Validación de Datos de Entrada ---
+            if (!Array.isArray(data) || data.length === 0) {
+                throw new Error("El parámetro 'data' debe ser un array de objetos no vacío.");
+            }
+            if (!Array.isArray(coloredRows)) {
+                throw new Error("El parámetro 'coloredRows' debe ser un array.");
+            }
+
+            // --- Constantes de Estilo ---
+            const OUTER_BORDER_COLOR = '#CCCCCC'; // Gris claro
+            const INNER_BORDER_COLOR = '#ADD8E6'; // Azul claro
+            const OUTER_BORDER_WIDTH = 1;
+            const INNER_BORDER_WIDTH = 0.5;
+            const HEADER_FILL_COLOR = '#F0F0F0'; // Gris muy claro para cabecera
+
+            // --- Extracción de Cabeceras y Preparación del Cuerpo de la Tabla ---
+            const headers = Object.keys(data[0]);
+            const body = [
+                // Fila de cabecera (con estilo)
+                headers.map(header => ({ text: header, bold: true, fillColor: HEADER_FILL_COLOR }))
+            ];
+
+            // Añadir filas de datos al cuerpo
+            data.forEach(row => {
+                const rowData = headers.map(header => row[header] !== undefined ? String(row[header]) : ''); // Convertir a string o vacío
+                body.push(rowData);
+            });
+
+            // --- Aplicación de Coloreado ---
+            const headerMap = headers.reduce((acc, header, index) => {
+                acc[header] = index;
+                return acc;
+            }, {});
+
+            coloredRows.forEach((rule, ruleIndex) => {
+                // Validar formato de color
+                if (!/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(rule.color)) {
+                    throw new Error(`Formato de color inválido ('${rule.color}') en la regla de coloreado ${ruleIndex}. Use formato hexadecimal (ej: '#RRGGBB').`);
+                }
+                if (!Array.isArray(rule.rows)) {
+                     throw new Error(`La propiedad 'rows' debe ser un array en la regla de coloreado ${ruleIndex}.`);
+                }
+
+                rule.rows.forEach(rowIndex => {
+                    // Validar índice de fila (se suma 1 porque body[0] es la cabecera)
+                    if (rowIndex < 0 || rowIndex >= data.length) {
+                        throw new Error(`Índice de fila fuera de límites (${rowIndex}) en la regla de coloreado ${ruleIndex}. El índice debe estar entre 0 y ${data.length - 1}.`);
+                    }
+                    const bodyRowIndex = rowIndex + 1; // Ajustar índice para el array 'body'
+
+                    if (rule.columns && Array.isArray(rule.columns)) {
+                        // Colorear celdas específicas
+                        rule.columns.forEach(colName => {
+                            const colIndex = headerMap[colName];
+                            if (colIndex === undefined) {
+                                console.warn(`Nombre de columna no encontrado ('${colName}') en la regla de coloreado ${ruleIndex}. Se omitirá.`);
+                                return; // Opcional: lanzar error si se prefiere más estricto
+                                // throw new Error(`Nombre de columna no encontrado ('${colName}') en la regla de coloreado ${ruleIndex}.`);
+                            }
+                            // Asegurarse de que la celda sea un objeto para aplicar fillColor
+                            if (typeof body[bodyRowIndex][colIndex] !== 'object') {
+                                body[bodyRowIndex][colIndex] = { text: body[bodyRowIndex][colIndex] };
+                            }
+                            body[bodyRowIndex][colIndex].fillColor = rule.color;
+                        });
+                    } else {
+                        // Colorear toda la fila
+                        body[bodyRowIndex] = body[bodyRowIndex].map(cell => {
+                            // Asegurarse de que cada celda sea un objeto
+                            const cellObject = (typeof cell === 'object' && cell !== null && !Array.isArray(cell)) ? cell : { text: cell };
+                            cellObject.fillColor = rule.color;
+                            return cellObject;
+                        });
+                    }
+                });
+            });
+
+
+            // --- Definición del Documento PDF ---
+            const docDefinition = {
+                content: [
+                    {
+                        // Definición de la tabla
+                        table: {
+                            headerRows: 1, // La primera fila es la cabecera
+                            widths: Array(headers.length).fill('*'), // Distribución equitativa del ancho
+                            body: body
+                        },
+                        // Layout personalizado para los bordes
+                        layout: {
+                            // Grosor de las líneas horizontales
+                            hLineWidth: function (i, node) {
+                                // Borde superior e inferior de la tabla, y línea bajo la cabecera
+                                return (i === 0 || i === node.table.body.length || i === 1) ? OUTER_BORDER_WIDTH : INNER_BORDER_WIDTH;
+                            },
+                            // Grosor de las líneas verticales
+                            vLineWidth: function (i, node) {
+                                // Borde izquierdo y derecho de la tabla
+                                return (i === 0 || i === node.table.widths.length) ? OUTER_BORDER_WIDTH : INNER_BORDER_WIDTH;
+                            },
+                            // Color de las líneas horizontales
+                            hLineColor: function (i, node) {
+                                return (i === 0 || i === node.table.body.length) ? OUTER_BORDER_COLOR : INNER_BORDER_COLOR;
+                            },
+                            // Color de las líneas verticales
+                            vLineColor: function (i, node) {
+                                return (i === 0 || i === node.table.widths.length) ? OUTER_BORDER_COLOR : INNER_BORDER_COLOR;
+                            },
+                             // Relleno de las celdas (opcional)
+                             paddingLeft: function(i, node) { return 5; },
+                             paddingRight: function(i, node) { return 5; },
+                             paddingTop: function(i, node) { return 3; },
+                             paddingBottom: function(i, node) { return 3; }
+                        }
+                    }
+                ],
+                // Estilos por defecto (opcional)
+                defaultStyle: {
+                    fontSize: 10
+                }
+            };
+
+            // --- Generación y Descarga del PDF ---
+            pdfMake.createPdf(docDefinition).download(filename);
+
+        } catch (error) {
+            console.error("Error al generar el PDF:", error);
+            errorMensajeDiv.textContent = `Error: ${error.message}`;
+        }
+    }
+
+    // --- Ejemplo de Uso ---
+    const datosTabla = [
+        { ID: 1, Nombre: 'Alice', Ciudad: 'Madrid', Edad: 30 },
+        { ID: 2, Nombre: 'Bob', Ciudad: 'Barcelona', Edad: 25 },
+        { ID: 3, Nombre: 'Charlie', Ciudad: 'Valencia', Edad: 35 },
+        { ID: 4, Nombre: 'David', Ciudad: 'Sevilla', Edad: 28 },
+        { ID: 5, Nombre: 'Eve', Ciudad: 'Madrid', Edad: 40 }
+    ];
+
+    const reglasColoreado = [
+        {
+            rows: [1, 3], // Colorear filas con índice 1 (Bob) y 3 (David)
+            color: '#FFFFE0' // Amarillo claro
+            // Sin 'columns', colorea toda la fila
+        },
+        {
+            rows: [0, 4], // Colorear filas con índice 0 (Alice) y 4 (Eve)
+            color: '#E6E6FA', // Lavanda claro
+            columns: ['Nombre', 'Edad'] // Solo colorear las columnas 'Nombre' y 'Edad'
+        },
+         {
+            rows: [2], // Colorear fila con índice 2 (Charlie)
+            color: '#90EE90', // Verde claro
+            columns: ['Ciudad'] // Solo colorear la columna 'Ciudad'
+        }
+        // Puedes añadir más reglas aquí
+        // Ejemplo con error de formato de color (descomentar para probar):
+        // { rows: [0], color: 'azul' }
+        // Ejemplo con índice fuera de límites (descomentar para probar):
+        // { rows: [10], color: '#FF0000' }
+    ];
+
+    // Mostrar datos de ejemplo en la página
+    document.getElementById('datosEjemplo').textContent = JSON.stringify(datosTabla, null, 2);
+    document.getElementById('coloreadoEjemplo').textContent = JSON.stringify(reglasColoreado, null, 2);
+
+
+    // Asociar la función al botón
+    document.getElementById('generarPdfBtn').addEventListener('click', () => {
+        crearTablaPdf(datosTabla, reglasColoreado, 'mi_tabla_personalizada.pdf');
+    });
+
+</script>
+
+</body>
+</html>
