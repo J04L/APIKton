@@ -19,11 +19,11 @@ exports.login = async (req, res) => {
     if (!contrasenyaCorrecta) return res.status(401).json({ error: 'Credenciales incorrectas' });
 
     //añadir token
-    const token = jwt.sign({ id: usuario._id, nombre: usuario.nombre, email: usuario.email }, process.env.JWT_SECRET);
+    const token = jwt.sign({ id: usuario._id}, process.env.JWT_SECRET);
+    const action_token = jwt.sign({ id: usuario.nombre}, process.env.JWT_SECRET);
 
     //enviar token y usuario
-    res.json({ "token": token , "usuario": usuario });
-    
+    res.json({ "token": token , "action_token": action_token, "usuario": usuario });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -51,6 +51,26 @@ exports.register = async (req, res) => {
     await usuario.save() //insertamos el usuario
 
     res.status(201).json(usuarioReq);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.userSession = async (req, res) => {
+  try {
+
+    // Buscar el usuario en la base de datos
+    const usuario = await Usuario.findById(req.usuario.id);
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Generar un nuevo token
+    const token = jwt.sign({ id: usuario._id }, process.env.JWT_SECRET);
+
+    // Enviar el token y el usuario
+    res.json({ "token": token, "usuario": usuario });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

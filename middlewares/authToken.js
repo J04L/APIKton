@@ -1,17 +1,27 @@
+
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
+
+// Cargar variables de entorno
+dotenv.config();
+
 const authToken = (req, res, next) => {
     //obtenemos el token de la cabecera
-    const token = req.headers.token;
+    const authorization= req.headers.authorization
     
     //comprobamos si el token es válido
-    if (!token) return res.status(401).json({ error: 'No hay token' });
+    if (!authorization) return res.status(401).json({ error: 'No hay token' });
+
+    const token = authorization.split(' ')[1];
 
     //decodificamos el token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET, (err, usuario) => {
+    jwt.verify(token, process.env.JWT_SECRET, (err, usuario) => {
         if (err) return res.status(401).json({ error: 'Token no válido' });
-        req.id = usuario.id;
+        req.usuario = usuario;
         next();
       });
     
 }
+
 
 module.exports = authToken;
