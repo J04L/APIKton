@@ -11,6 +11,9 @@ connectDB();
 // Middlewares
 app.use(express.json());
 
+// Servir archivos estáticos desde la carpeta uploads
+app.use('/uploads', express.static('uploads'));
+
 // Rutas
 app.use('/usuarios', require('./routes/usuarioRoutes.js'));
 app.use('/session', require('./routes/loginRegisterRoutes.js'));

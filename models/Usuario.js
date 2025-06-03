@@ -1,21 +1,49 @@
-// models/Usuario.js
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
+const {ObjetivoSchema} = require('./Objetivo.js');
+const {ActividadFisicaSchema} = require('./ActividadFisica.js');
 
-const UsuarioSchema = new mongoose.Schema({
-  nombre: { type: String, required: true, unique: true},
-  email: { type: String, unique: true, required: true},
-  password: { type: String, required: true},
-  foto : { type: String, required: true},
-  edad: { type: Number, required: false},
-  peso: { type: Number, required: false},
-  altura: { type: Number, required: false},
-  sexo: { type: String, required: false},
-  objetivo: { type: String, required: false},
-  actividadFisica: { type: String, required: false},
-  tiempoDisponibleParaCocinar: {type: Number, required: false},
-  restriccionesAlimentarias: { type: [String] },
-  recetasFavoritas: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Receta' }],
-  recetasCreadas: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Receta' }],
-}, { timestamps: true });
+const {RecetaSchema} = require('./Receta.js');
 
-module.exports = mongoose.model('Usuario', UsuarioSchema);
+// Subesquema para UserObjetive
+const UserObjetiveSchema = new Schema({
+  objetivoCalorico: { type: Number, default: null },
+  objetivo: { type: ObjetivoSchema, default: null },
+  caloriasConsumidas: { type: Number, default: null },
+  pesoObjetivo: { type: Number, default: null },
+  logros: { type: [String], default: [] },
+  actividadFisica: { type: ActividadFisicaSchema, default: null }
+}, { _id: false });
+
+// Subesquema para AcurateInfo
+const AcurateInfoSchema = new Schema({
+  tiempoDisponibleParaCocinar: { type: Number, default: null },
+  restriccionesAlimentarias: { type: [String], default: [] }
+}, { _id: false });
+
+// Subesquema para UserActivity
+const UserActivitySchema = new Schema({
+  historialRecetas: { type: [RecetaSchema], default: [] },
+  recetasFavoritas: { type: [RecetaSchema], default: [] },
+  recetasMeGusta: { type: [RecetaSchema], default: [] },
+  recetasPropias: { type: [RecetaSchema], default: [] }
+}, { _id: false });
+
+// Esquema principal de Usuario
+const UsuarioSchema = new Schema({
+  nombre: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  foto: { type: String, required: false },
+  edad: { type: Number, default: null },
+  peso: { type: Number, default: null },
+  altura: { type: Number, default: null },
+  sexo: { type: String, default: null },
+  objetivo: { type: UserObjetiveSchema, required: true },
+  extraInfo: { type: AcurateInfoSchema, required: true },
+  actividad: { type: UserActivitySchema, required: true }
+});
+
+const Usuario = mongoose.model('Usuario', UsuarioSchema);
+
+module.exports = Usuario;

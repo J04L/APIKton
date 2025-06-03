@@ -3,7 +3,10 @@ const mongoose = require('mongoose');
 
 const ObjetivoSchema = new mongoose.Schema({
   nombre: { type: String, required: true, unique: true },
-  rango: { type: String }, // Podrías especificar un rango o dejarlo como descriptor
+  factor: { type: Number, required: true },
+  descripcion: { type: String, required: true },
 });
 
-module.exports = mongoose.model('Objetivo', ObjetivoSchema);
+const Objetivo = mongoose.model('Objetivo', ObjetivoSchema);
+module.exports = {Objetivo, ObjetivoSchema};
+

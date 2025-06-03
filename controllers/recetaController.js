@@ -1,5 +1,6 @@
 // controllers/recetaController.js
-const Receta = require('../models/Receta.js');
+const {Receta} = require('../models/Receta.js');
+const Usuario = require('../models/Usuario.js');
 
 // Crear una nueva receta
 exports.createReceta = async (req, res) => {
@@ -13,7 +14,7 @@ exports.createReceta = async (req, res) => {
 };
 
 // Obtener todas las recetas con filtros y paginación
-exports.getRecetas = async (req, res) => {
+exports.getRecetasSearch = async (req, res) => {
   try {
     const { page = 1, limit = 10, filtros} = req.query;
     
@@ -102,6 +103,9 @@ exports.getRecetas = async (req, res) => {
                 }
               }
             }
+          },
+          cantidadIngredientes: {
+            $size: "$ingredientesTotales"
           }
         }
       },
@@ -120,9 +124,20 @@ exports.getRecetas = async (req, res) => {
       // 4. Ordenar de mayor a menor según totalMatches
       {
         $sort: { totalMatches: -1 }
+      },
+      // 5. Proyectar solo los campos necesarios
+      {
+        $project: {
+          _id: 1,
+          titulo: 1,
+          fotoPrincipal: 1,
+          cantidadIngredientes: 1,
+          tiempoTotal: 1
+        }
       }
     ]
     }
+    
     else pipeline = []
 
     const recetas = await Receta.aggregate(pipeline)
@@ -163,6 +178,80 @@ exports.deleteReceta = async (req, res) => {
     const receta = await Receta.findByIdAndDelete(req.params.id);
     if (!receta) return res.status(404).json({ error: 'Receta no encontrada' });
     res.json({ message: 'Receta eliminada' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.likeReceta = async (req, res) => {
+  try {
+    const receta = await Receta.findById(req.body.idReceta);
+    if (!receta) return res.status(404).json({ error: 'Receta no encontrada' });
+
+    const usuario = await Usuario.findById(req.body.idUsuario);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    usuario.actividad.recetasMeGusta.push(receta);
+    await usuario.save();
+    
+    res.status(200).json(receta);
+    
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.dislikeReceta = async (req, res) => {
+  try {
+    const usuario = await Usuario.findById(req.body.idUsuario);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const receta = usuario.actividad.recetasMeGusta.find(r => r._id.equals(req.body.idReceta));
+    const index = usuario.actividad.recetasMeGusta.indexOf(receta);
+    if (index === -1) return res.status(404).json({ error: 'Receta no encontrada en el listado de likes' });
+
+    usuario.actividad.recetasMeGusta.splice(index, 1);
+    await usuario.save();
+    
+    res.status(200).json(req.body.idReceta);
+    
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.favoriteReceta = async (req, res) => {
+  try {
+    const receta = await Receta.findById(req.body.idReceta);
+    if (!receta) return res.status(404).json({ error: 'Receta no encontrada' });
+
+    const usuario = await Usuario.findById(req.body.idUsuario);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    usuario.actividad.recetasFavoritas.push(receta);
+    await usuario.save();
+    
+    res.status(200).json(receta);
+    
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.unfavoriteReceta = async (req, res) => {
+  try {
+    const usuario = await Usuario.findById(req.body.idUsuario);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const receta = usuario.actividad.recetasFavoritas.find(r => r._id.equals(req.body.idReceta));
+    const index = usuario.actividad.recetasFavoritas.indexOf(receta); 
+    if (index === -1) return res.status(404).json({ error: 'Receta no encontrada en el listado de favoritos' });
+
+    usuario.actividad.recetasFavoritas.splice(index, 1);
+    await usuario.save();
+    
+    res.status(200).json(req.body.idReceta);
+    
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

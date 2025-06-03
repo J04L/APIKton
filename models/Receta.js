@@ -10,7 +10,7 @@ const PorcentajeEnergeticoSchema = new mongoose.Schema({
 
 const IngredienteSchema = new mongoose.Schema({
   nombre: { type: String, required: true },
-  cantidad: { type: Number, required: false },
+  cantidad: { type: String, required: false },
   peso: { type: Number, required: false },
   porcentajeEnergetico: { type: PorcentajeEnergeticoSchema, required: false },
 }, { _id: false });
@@ -31,10 +31,14 @@ const ResultadoSchema = new mongoose.Schema({
 }, { _id: false });
 
 const RecetaSchema = new mongoose.Schema({
-  nombre: { type: String, required: true },
+  _id: { type: mongoose.Schema.Types.ObjectId, required: false },
+  titulo: { type: String, required: true },
   descripcion: { type: String, required: true },
   etiquetas: {type: [String], required: false},
-  restriccionesAlimentarios: {type: [String], required: false},
+  dificultad: { type: String, required: false },
+  fotoPrincipal: { type: String, required: true },
+  fotos: { type: [String], required: false },
+  restriccionesAlimentarias: {type: [String], required: false},
   tiempoTotal: { type: Number, required: true },
   ingredientesTotales: { type: [IngredienteSchema], required: true },
   herramientasTotales: { type: [String], required: true },
@@ -43,4 +47,8 @@ const RecetaSchema = new mongoose.Schema({
   usuario: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: false },
 }, { timestamps: true, collection: "recetas"});
 
-module.exports = mongoose.model('Receta', RecetaSchema);
+const Receta = mongoose.model('Receta', RecetaSchema)
+module.exports = {
+  Receta,
+  RecetaSchema
+};
